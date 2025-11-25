@@ -1,15 +1,30 @@
 <?php
-// Load env vars from .env (Glitch reads it automatically)
+// Load env vars (set in Render)
 $TELEGRAM_TOKEN = $_ENV['TELEGRAM_TOKEN'] ?? '';
 $COPYLEAKS_KEY = $_ENV['COPYLEAKS_KEY'] ?? '';
 $GPTZERO_KEY = $_ENV['GPTZERO_KEY'] ?? '';
 
 if (empty($TELEGRAM_TOKEN)) {
     http_response_code(500);
-    die("Error: TELEGRAM_TOKEN not set in .env");
+    die("Error: TELEGRAM_TOKEN not set!");
 }
 
-// Get incoming update from Telegram
+// Your Render URL (e.g., https://your-bot.onrender.com/webhook)
+$WEBHOOK_URL = 'https://' . $_SERVER['HTTP_HOST'] . '/webhook';  // Adjust path if needed
+
+// Set webhook on startup (runs once on deploy)
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && empty($_SERVER['QUERY_STRING'])) {
+    $setWebhook = file_get_contents("https://api.telegram.org/bot$TELEGRAM_TOKEN/setWebhook?url=$WEBHOOK_URL");
+    $result = json_decode($setWebhook, true);
+    if ($result['ok']) {
+        echo "Webhook set successfully to $WEBHOOK_URL";
+    } else {
+        echo "Webhook failed: " . json_encode($result);
+    }
+    exit;
+}
+
+// Handle webhook POST from Telegram
 $update = json_decode(file_get_contents('php://input'), true);
 if (!$update || !isset($update['message'])) {
     http_response_code(200);
@@ -35,7 +50,7 @@ function sendMessage($chat_id, $text) {
     file_get_contents($url, false, stream_context_create($opts));
 }
 
-// Handle /start
+// /start command
 if (strpos($text, '/start') === 0) {
     sendMessage($chat_id, "Hi! Send me text to check for plagiarism and AI generation. (Powered by Honest Pen Bot)");
     exit;
@@ -49,7 +64,7 @@ if (strlen($text) < 15) {
 
 sendMessage($chat_id, "Checking your text...");
 
-// Plagiarism check
+// Plagiarism check (Copyleaks API or fallback)
 $plag = '';
 if ($COPYLEAKS_KEY) {
     $context = stream_context_create([
@@ -64,13 +79,12 @@ if ($COPYLEAKS_KEY) {
     $score = $data['score'] ?? 0;
     $plag = "Plagiarism score: " . round($score * 100) . "%";
 } else {
-    // Basic fallback (string similarity to dummy text)
-    $dummy = "This is sample web content for testing similarity.";
+    $dummy = "Sample web content for similarity testing.";
     similar_text($text, $dummy, $percent);
     $plag = "Basic plagiarism similarity: " . round($percent, 1) . "% (add Copyleaks key for full scan)";
 }
 
-// AI check
+// AI check (GPTZero API or fallback)
 $ai = '';
 if ($GPTZERO_KEY) {
     $context = stream_context_create([
@@ -85,9 +99,8 @@ if ($GPTZERO_KEY) {
     $prob = $data['documents'][0]['class_probabilities']['completely_generated'] ?? 0;
     $ai = "AI-generated probability: " . round($prob * 100, 1) . "%";
 } else {
-    // Basic fallback (simple word count heuristic)
     $words = str_word_count($text);
-    $simple_score = min(50, $words / 5); // Dummy AI score
+    $simple_score = min(50, $words / 5); // Dummy heuristic
     $ai = "Basic AI probability: " . $simple_score . "% (add GPTZero key for accurate detection)";
 }
 
