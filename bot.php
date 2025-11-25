@@ -1,6 +1,6 @@
 <?php
 // Load env vars (set in Render)
-$TELEGRAM_TOKEN = $_ENV['TELEGRAM_TOKEN'] ?? '';
+$TELEGRAM_TOKEN = $_ENV['8541002699:AAGfN4pGrkQLRROki0nMNMoGXHd0PTS8JP0'] ?? '';
 $COPYLEAKS_KEY = $_ENV['COPYLEAKS_KEY'] ?? '';
 $GPTZERO_KEY = $_ENV['GPTZERO_KEY'] ?? '';
 
