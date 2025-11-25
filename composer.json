@@ -1,3 +1,11 @@
 {
-    "require": {}
+    "name": "oluwafimidara/php-plagiarism-bot",
+    "description": "Telegram Plagiarism & AI Checker Bot",
+    "type": "project",
+    "require": {},
+    "config": {
+        "allow-plugins": {
+            "*": true
+        }
+    }
 }
